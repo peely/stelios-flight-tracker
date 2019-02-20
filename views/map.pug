@@ -1,0 +1,52 @@
+extends layout
+block content
+    #map
+    script.
+
+
+
+
+        var myData = !{JSON.stringify(jsonData)};
+
+        // Create variable to hold map element, give initial settings to map
+        var map = L.map('map', {center: [43.64701, -79.39425], zoom: 3});
+
+        // Add OpenStreetMap tile layer to map element
+        L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', {
+            attribution: 'Tiles &copy; Esri &mdash; Source: Esri, DeLorme, NAVTEQ, USGS, Intermap, iPC, NRCAN, Esri Japan, METI, Esri China (Hong Kong), Esri (Thailand), TomTom, 2012'
+        }).addTo(map);
+
+
+        // PlaneIcon
+        var planeIcon = L.icon({
+            iconUrl :'images/if_plane_173072.png',
+           iconSize: [15, 15]
+
+        });
+
+        // Add JSON to map
+
+        function iris (feature,layer){
+
+            layer.setIcon(planeIcon);
+        };
+
+
+        L.geoJson(myData, {
+
+            onEachFeature: iris,
+
+            pointToLayer: function (feature, latlng) {
+                return L.marker(latlng, {icon: planeIcon, rotationAngle: feature.properties.f3})
+            }
+
+        }).addTo(map);
+
+        //Search bar for location
+
+        var osmGeocoder = new L.Control.OSMGeocoder({
+            collapsed: false,
+            position: 'topright',
+            text: 'Locate'
+        });
+        map.addControl(osmGeocoder);
