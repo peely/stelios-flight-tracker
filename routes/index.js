@@ -1,10 +1,11 @@
-
-
 var express = require('express'); // require Express
 var router = express.Router(); // setup usage of the Express router engine
 
 /* PostgreSQL and PostGIS module and connection setup */
 const { Client, Query } = require('pg')
+const axios = require('axios');
+const mockData = require('../mocks/openSkyMockData.json')
+const { parseOpenSkyData } = require('../utils/parse-open-sky-data')
 
 // Setup connection
 var username = "postgres"; // sandbox username
@@ -21,40 +22,81 @@ var geom_query = "SELECT row_to_json(fc) FROM (\n" +
     "\t) As f\n" +
     ") As fc";
 
-/* GET home page. */
-router.get('/', function(req, res, next) {
-  res.render('index', { title: 'Express' });
+    
+/* GET the map page */
+router.get('/', function(req, res) {
+   
+    res.render('map', {
+        title: "Unipi Aircraft Monitoring", // Give a title to our page
+        jsonData: {} // Pass data to the View
+    });
+
+    // getPGData()
+    // .then((data) => {
+    //     res.render('map', {
+    //         title: "Unipi Aircraft Monitoring", // Give a title to our page
+    //         jsonData: data // Pass data to the View
+    //     });
+    // })
+    // .catch(res.send)
 });
 
 /* GET Postgres JSON data */
 router.get('/data', function (req, res) {
-    var client = new Client(conString);
-    client.connect();
-    var query = client.query(new Query(geom_query));
-    query.on("row", function (row, result) {
-        result.addRow(row);
-    });
-    query.on("end", function (result) {
-        res.send(result.rows[0].row_to_json);
-        res.end();
-    });
+    getPGData()
+    .then((data) => {
+        res.send(data);
+    })
+    .catch(res.send)
 });
 
-/* GET the map page */
-router.get('/map', function(req, res) {
-    var client = new Client(conString); // Setup our Postgres Client
-    client.connect(); // connect to the client
-    var query = client.query(new Query(geom_query)); // Run our Query
-    query.on("row", function (row, result) {
-        result.addRow(row);
+
+const getPGData = () => {
+    return new Promise((resolve, reject)=>{
+
+        try {
+            var client = new Client(conString); // Setup our Postgres Client
+            client.connect(); // connect to the client
+            var query = client.query(new Query(geom_query)); // Run our Query
+            query.on("row", function (row, result) {
+                result.addRow(row);
+            });
+
+            query.on("end", function (result) {
+                var data = result.rows[0].row_to_json // Save the JSON as variable data
+                resolve(data)
+            });
+        }
+        catch(e) {
+            reject(e)
+        }
     });
-    // Pass the result to the map page
-    query.on("end", function (result) {
-        var data = result.rows[0].row_to_json // Save the JSON as variable data
-        res.render('map', {
-            title: "Unipi Aircraft Monitoring", // Give a title to our page
-            jsonData: data // Pass data to the View
+}
+
+/* GET data from openSkyNetwork */
+router.get('/apiProxy', function (req, res) {
+    let useCachedData = true;
+
+    if(useCachedData)
+    {//Use a saved response, so as to not hammer their API
+        console.log('serving cached data')
+
+        let parsedData = parseOpenSkyData(mockData)
+        res.send(parsedData);
+    } else {
+        //Use the live API
+        console.log('serving live data')
+        
+        axios.get('https://opensky-network.org/api/states/all')
+        .then(response => {
+            let parsedData = parseOpenSkyData(response.data)
+            res.send(parsedData);
+        })
+        .catch(error => {
+            console.log(error);
+            res.send(error)
         });
-    });
+    }
 });
+
 module.exports = router;
