@@ -3,9 +3,6 @@ var router = express.Router(); // setup usage of the Express router engine
 
 /* PostgreSQL and PostGIS module and connection setup */
 const { Client, Query } = require('pg')
-const axios = require('axios');
-const mockData = require('../mocks/openSkyMockData.json')
-const { parseOpenSkyData } = require('../utils/parse-open-sky-data')
 
 // Setup connection
 var username = "postgres"; // sandbox username
@@ -72,31 +69,5 @@ const getPGData = () => {
         }
     });
 }
-
-/* GET data from openSkyNetwork */
-router.get('/apiProxy', function (req, res) {
-    let useCachedData = true;
-
-    if(useCachedData)
-    {//Use a saved response, so as to not hammer their API
-        console.log('serving cached data')
-
-        let parsedData = parseOpenSkyData(mockData)
-        res.send(parsedData);
-    } else {
-        //Use the live API
-        console.log('serving live data')
-        
-        axios.get('https://opensky-network.org/api/states/all')
-        .then(response => {
-            let parsedData = parseOpenSkyData(response.data)
-            res.send(parsedData);
-        })
-        .catch(error => {
-            console.log(error);
-            res.send(error)
-        });
-    }
-});
 
 module.exports = router;
