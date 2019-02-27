@@ -1,53 +1,13 @@
-
-function getTheData() {
-    fetch('/apiProxy').then((resp) => resp.json()) // Transform the data into json
-    .then((data) => {
-        drawTheMap(data)
-    })
-}
-
-function drawTheMap(myData) {
-
-    // var myData = !{JSON.stringify(jsonData)};
-
+function drawTheMap() {
     // Create variable to hold map element, give initial settings to map
-    var map = L.map('map', {center: [43.64701, -79.39425], zoom: 3});
+    let map = L.map('map', {center: [43.64701, -79.39425], zoom: 3});
 
     // Add OpenStreetMap tile layer to map element
     L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', {
         attribution: 'Tiles &copy; Esri &mdash; Source: Esri, DeLorme, NAVTEQ, USGS, Intermap, iPC, NRCAN, Esri Japan, METI, Esri China (Hong Kong), Esri (Thailand), TomTom, 2012'
     }).addTo(map);
 
-
-    // PlaneIcon
-    var planeIcon = L.icon({
-        iconUrl :'images/if_plane_173072.png',
-    iconSize: [15, 15]
-
-    });
-
-    // Add JSON to map
-
-    L.geoJson(myData, {
-
-        onEachFeature: iris,
-
-        pointToLayer: function (feature, latlng) {
-            return L.marker(latlng, {icon: planeIcon, rotationAngle: feature.properties.f3})
-        }
-
-    }).bindPopup(function (layer) {
-        return featurePropertiesToPopUpContent(layer.feature.properties);
-    }).addTo(map);
-
-    function iris (feature,layer){
-        
-
-        layer.setIcon(planeIcon);
-    };
-
     //Search bar for location
-
     var osmGeocoder = new L.Control.OSMGeocoder({
         collapsed: false,
         position: 'topright',
@@ -55,6 +15,37 @@ function drawTheMap(myData) {
     });
     map.addControl(osmGeocoder);
 
+    window.ourMap = map;
+}
+
+function addPlanesToMap() {
+    // var myData = !{JSON.stringify(jsonData)};
+
+    getPlaneData()
+    .then((myData) => {
+        let map = window.ourMap;
+
+        // PlaneIcon
+        let planeIcon = L.icon({
+            iconUrl :'images/if_plane_173072.png',
+            iconSize: [15, 15]
+        });
+    
+         // Add JSON to map
+         L.geoJson(myData, {
+            onEachFeature: iris,
+            pointToLayer: function (feature, latlng) {
+                return L.marker(latlng, {icon: planeIcon, rotationAngle: feature.properties.f3})
+            }
+    
+        }).bindPopup(function (layer) {
+            return featurePropertiesToPopUpContent(layer.feature.properties);
+        }).addTo(map);
+    
+        function iris (feature, layer){
+            layer.setIcon(planeIcon);
+        };
+    })
 }
 
 function featurePropertiesToPopUpContent(data) {
@@ -93,5 +84,36 @@ function featurePropertiesToPopUpContent(data) {
         <br>
         <span>position_source = ${data.position_source}</span>
         <br>
+        <button onclick="showPlaneTrack('${data.icao24}')">Show track for ${data.icao24}</button>
     `
+}
+
+function showPlaneTrack(icao24)
+{
+    console.log(icao24)
+    getTrackData(icao24)
+    .then((data) => {
+        //Convert to lat-long array
+        let latLongs = [];
+        data.path.forEach((waypoint) => {
+            latLongs.push([waypoint.latitude, waypoint.longitude])
+        })
+
+        addPolyLineToMap(latLongs)
+    })
+}
+
+function addPolyLineToMap(latlngs) {
+    let map = window.ourMap;
+
+    var polyline = L.polyline(latlngs, {color: 'red'}).addTo(map);
+    map.fitBounds(polyline.getBounds());
+}
+
+function getPlaneData() {
+    return fetch('/api/states/all').then((resp) => resp.json()) // Transform the data into json
+}
+
+function getTrackData(icao24) {
+    return fetch('/api/tracks?icao24=' + icao24).then((resp) => resp.json())
 }
