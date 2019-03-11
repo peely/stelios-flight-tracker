@@ -1,3 +1,7 @@
+window.ourLeafletJSMap = {
+    map: {},
+    track : {}
+}
 function drawTheMap() {
     // Create variable to hold map element, give initial settings to map
     let map = L.map('map', {center: [43.64701, -79.39425], zoom: 3});
@@ -15,7 +19,7 @@ function drawTheMap() {
     });
     map.addControl(osmGeocoder);
 
-    window.ourMap = map;
+    window.ourLeafletJSMap.map = map;
 }
 
 function addPlanesToMap() {
@@ -23,7 +27,7 @@ function addPlanesToMap() {
 
     getPlaneData()
     .then((myData) => {
-        let map = window.ourMap;
+        let map = window.ourLeafletJSMap.map;
 
         // PlaneIcon
         let planeIcon = L.icon({
@@ -104,10 +108,14 @@ function showPlaneTrack(icao24)
 }
 
 function addPolyLineToMap(latlngs) {
-    let map = window.ourMap;
+    let map = window.ourLeafletJSMap.map;
+    let previousPolyLine = window.ourLeafletJSMap.track;
+    previousPolyLine.remove && previousPolyLine.remove()
 
     var polyline = L.polyline(latlngs, {color: 'red'}).addTo(map);
     map.fitBounds(polyline.getBounds());
+
+    window.ourLeafletJSMap.track = polyline;
 }
 
 function getPlaneData() {
