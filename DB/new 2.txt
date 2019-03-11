@@ -1,0 +1,47 @@
+CREATE or replace FUNCTION test() RETURNS "trigger" AS $$
+BEGIN
+
+
+if old.airplane_data.callsign = new.airplane_data.callsign AND old.airplane_data.t < new.airplane_data.t
+	 then
+		insert into airplane_data_history values (old.airplane_data.callsign, old.airplane_data.t);
+	end if;
+
+/*if ((airplane_data.callsign = airplane_data.callsign) AND (airplane_data.t < airplane_data.t))
+	 then
+		
+		delete from airplane_data;
+
+end if;*/
+return new;
+end;
+$$ LANGUAGE 'plpgsql' VOLATILE;
+ 
+ 
+  create TRIGGER test1
+  AFTER INSERT
+  ON airplane_data
+  EXECUTE PROCEDURE test(); 
+   
+   
+    CREATE OR REPLACE FUNCTION function_copy() RETURNS TRIGGER AS
+	$BODY$
+	BEGIN
+    	INSERT INTO
+        	airplane_data_history(callsign,t)
+					SELECT airplane_data.callsign, airplane_data.t FROM airplane_data 
+					WHERE new.callsign = callsign
+					AND t <new.t;
+
+        
+		
+
+           RETURN new;
+	END;
+	$BODY$
+	language plpgsql;
+ 
+  CREATE TRIGGER test
+     AFTER INSERT ON airplane_data
+     FOR EACH ROW
+     EXECUTE PROCEDURE function_copy();

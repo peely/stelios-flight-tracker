@@ -1,0 +1,67 @@
+
+   /*---------------------INSERT INTO AIRPLANE_DATA_HISTORY-------------*/
+   
+    CREATE OR REPLACE FUNCTION insert_entries() RETURNS TRIGGER AS
+	$BODY$
+	BEGIN
+    	INSERT INTO
+        	airplane_data_history(callsign,t,geom)
+					SELECT airplane_data.callsign, airplane_data.t, airplane_data.geom FROM airplane_data 
+					WHERE new.callsign = callsign
+					AND t <new.t;
+
+        
+		
+
+           RETURN new;
+	END;
+	$BODY$
+	language plpgsql;
+ 
+  CREATE TRIGGER test
+     AFTER INSERT ON airplane_data
+     FOR EACH ROW
+     EXECUTE PROCEDURE insert_entries();
+	 
+	 /*------------------DELETE FROM AIRLANE_DATA------------------------*/
+	 
+	 CREATE OR REPLACE FUNCTION delete_entries() RETURNS TRIGGER AS
+	$BODY$
+	BEGIN
+    	
+				DELETE FROM airplane_data WHERE new.callsign = callsign
+					AND t <new.t;
+
+        
+		
+
+           RETURN new;
+	END;
+	$BODY$
+	language plpgsql;
+ 
+  CREATE TRIGGER test1
+     AFTER INSERT ON airplane_data
+     FOR EACH ROW
+     EXECUTE PROCEDURE delete_entries();
+	 
+	 
+	 /*-----------------------UPDATE GEOMETRY---------------------*/
+	  CREATE OR REPLACE FUNCTION update_gis() RETURNS TRIGGER AS
+	$BODY$
+	BEGIN
+    
+	update airplane_data set geom=st_SetSrid(st_MakePoint(lon, lat), 4326);
+
+        
+		
+
+           RETURN new;
+	END;
+	$BODY$
+	language plpgsql;
+ 
+  CREATE TRIGGER test2
+     AFTER INSERT ON airplane_data
+     FOR EACH ROW
+     EXECUTE PROCEDURE update_gis();
