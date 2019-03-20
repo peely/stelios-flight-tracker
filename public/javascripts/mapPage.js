@@ -23,8 +23,6 @@ function drawTheMap() {
 }
 
 function addPlanesToMap() {
-    // var myData = !{JSON.stringify(jsonData)};
-
     getPlaneData()
     .then((myData) => {
         let map = window.ourLeafletJSMap.map;
@@ -53,43 +51,14 @@ function addPlanesToMap() {
 }
 
 function featurePropertiesToPopUpContent(data) {
-    return `
-        <span>icao24 = ${data.icao24}</span>
-        <br>
-        <span>callsign = ${data.callsign}</span>
-        <br>
-        <span>origin_country = ${data.origin_country}</span>
-        <br>
-        <span>time_position = ${data.time_position}</span>
-        <br>
-        <span>last_contact = ${data.last_contact}</span>
-        <br>
-        <span>longitude = ${data.longitude}</span>
-        <br>
-        <span>latitude = ${data.latitude}</span>
-        <br>
-        <span>baro_altitude = ${data.baro_altitude}</span>
-        <br>
-        <span>on_ground = ${data.on_ground}</span>
-        <br>
-        <span>velocity = ${data.velocity}</span>
-        <br>
-        <span>true_track = ${data.true_track}</span>
-        <br>
-        <span>vertical_rate = ${data.vertical_rate}</span>
-        <br>
-        <span>sensors = ${data.sensors}</span>
-        <br>
-        <span>geo_altitude = ${data.geo_altitude}</span>
-        <br>
-        <span>squawk = ${data.squawk}</span>
-        <br>
-        <span>spi = ${data.spi}</span>
-        <br>
-        <span>position_source = ${data.position_source}</span>
-        <br>
-        <button onclick="showPlaneTrack('${data.icao24}')">Show track for ${data.icao24}</button>
-    `
+
+    let dialogHTML = ''
+    Object.keys(data).forEach((property) => {
+        dialogHTML += '<span>' + property + ': ' + data[property] + '</span><br>'
+    })
+
+    dialogHTML += '<button onclick="showPlaneTrack(\'' + data.callsign + '\')">Show track for ' + data.callsign + '</button>'
+    return dialogHTML;
 }
 
 function showPlaneTrack(icao24)
@@ -99,8 +68,8 @@ function showPlaneTrack(icao24)
     .then((data) => {
         //Convert to lat-long array
         let latLongs = [];
-        data.path.forEach((waypoint) => {
-            latLongs.push([waypoint.latitude, waypoint.longitude])
+        data.coordinates.forEach((point) => {
+            latLongs.push([point.coorddinates.coordinates[0], point.coorddinates.coordinates[1]])
         })
 
         addPolyLineToMap(latLongs)
@@ -119,9 +88,9 @@ function addPolyLineToMap(latlngs) {
 }
 
 function getPlaneData() {
-    return fetch('/api/states/all').then((resp) => resp.json()) // Transform the data into json
+    return fetch('/data').then((resp) => resp.json()) // Transform the data into json
 }
 
-function getTrackData(icao24) {
-    return fetch('/api/tracks?icao24=' + icao24).then((resp) => resp.json())
+function getTrackData(callsign) {
+    return fetch('/track?callsign=' + callsign).then((resp) => resp.json())
 }
