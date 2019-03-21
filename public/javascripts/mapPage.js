@@ -1,6 +1,7 @@
 window.ourLeafletJSMap = {
     map: {},
-    track : {}
+    track : {},
+    sidebar: {}
 }
 function drawTheMap() {
     // Create variable to hold map element, give initial settings to map
@@ -19,13 +20,22 @@ function drawTheMap() {
     });
     map.addControl(osmGeocoder);
 
+    // Sidebar
+    var sidebar = L.control.sidebar('sidebar', {
+        position: 'left'
+    });
+    
+    map.addControl(sidebar);
+
     window.ourLeafletJSMap.map = map;
+    window.ourLeafletJSMap.sidebar = sidebar;
 }
 
 function addPlanesToMap() {
     getPlaneData()
     .then((myData) => {
         let map = window.ourLeafletJSMap.map;
+        let sidebar = window.ourLeafletJSMap.sidebar;
 
         // PlaneIcon
         let planeIcon = L.icon({
@@ -41,7 +51,10 @@ function addPlanesToMap() {
             }
     
         }).bindPopup(function (layer) {
-            return featurePropertiesToPopUpContent(layer.feature.properties);
+            let popupHTML = featurePropertiesToPopUpContent(layer.feature.properties);
+            sidebar.setContent(sidebarHTML(popupHTML))
+            sidebar.show()
+            return popupHTML
         }).addTo(map);
     
         function iris (feature, layer){
@@ -59,6 +72,15 @@ function featurePropertiesToPopUpContent(data) {
 
     dialogHTML += '<button onclick="showPlaneTrack(\'' + data.callsign + '\')">Show track for ' + data.callsign + '</button>'
     return dialogHTML;
+}
+
+function sidebarHTML(content){
+    return `
+    <div id="sidebarClose">
+        <h1>Airplane Data</h1>
+        <button id="sidebarCloseBtn" onclick="window.ourLeafletJSMap.sidebar.hide();">X</button>
+    </div>
+    ${content}`
 }
 
 function showPlaneTrack(icao24)
