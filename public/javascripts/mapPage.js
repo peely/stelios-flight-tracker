@@ -70,7 +70,12 @@ function featurePropertiesToPopUpContent(data) {
         dialogHTML += '<span>' + property + ': ' + data[property] + '</span><br>'
     })
 
-    dialogHTML += '<button onclick="showPlaneTrack(\'' + data.callsign + '\')">Show track for ' + data.callsign + '</button>'
+    let uniqueKey = 'callsign'
+    if(getDataSource()) { 
+        uniqueKey = 'icao24'
+    }
+
+    dialogHTML += '<button onclick="showPlaneTrack(\'' + data[uniqueKey] + '\')">Show track for ' + data[uniqueKey] + '</button>'
     return dialogHTML;
 }
 
@@ -89,10 +94,19 @@ function showPlaneTrack(icao24)
     getTrackData(icao24)
     .then((data) => {
         //Convert to lat-long array
-        let latLongs = [];
-        data.coordinates.forEach((point) => {
+
+        let cb = (point) => {
             latLongs.push([point.coorddinates.coordinates[0], point.coorddinates.coordinates[1]])
-        })
+        }
+
+        if(getDataSource()) { 
+            cb = (point) => {
+                latLongs.push([point.latitude, point.longitude])
+            }
+        }
+
+        let latLongs = [];
+        data.path.forEach(cb)
 
         addPolyLineToMap(latLongs)
     })
@@ -110,9 +124,23 @@ function addPolyLineToMap(latlngs) {
 }
 
 function getPlaneData() {
-    return fetch('/data').then((resp) => resp.json()) // Transform the data into json
+    let URL = '/data'
+    if(getDataSource()) { 
+        URL = '/api/states/all'
+    }
+
+    return fetch(URL).then((resp) => resp.json()) // Transform the data into json
 }
 
 function getTrackData(callsign) {
-    return fetch('/track?callsign=' + callsign).then((resp) => resp.json())
+    let URL = '/track?callsign='
+    if(getDataSource()) { 
+        URL = '/api/tracks?icao24='
+    }
+
+    return fetch(URL + callsign).then((resp) => resp.json())
+}
+
+function getDataSource() {
+    return window.location.search.indexOf('open') > -1
 }

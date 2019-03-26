@@ -55,7 +55,7 @@ router.get('/tracks', function (req, res) {
         })
         .catch(error => {
             console.log(error);
-            res.send(error)
+            res.status(error.response.status).send(error.message)
         });
     } else {
         res.send(404)

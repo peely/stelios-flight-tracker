@@ -48,7 +48,7 @@ router.get('/track', function (req, res) {
 `SELECT row_to_json(fc)
     FROM (
         SELECT 'MultiPoint' As type,
-        array_to_json(array_agg(f)) As coordinates
+        array_to_json(array_agg(f)) As path
         FROM (
             SELECT ST_AsGeoJSON(lg.geom)::json As coorddinates
             FROM airplane_data_history As lg
