@@ -1,7 +1,7 @@
 window.ourLeafletJSMap = {
     map: {},
     track : {},
-    sidebar: {}
+    sideBarMgr: {}
 }
 function drawTheMap() {
     // Create variable to hold map element, give initial settings to map
@@ -21,21 +21,19 @@ function drawTheMap() {
     map.addControl(osmGeocoder);
 
     // Sidebar
-    var sidebar = L.control.sidebar('sidebar', {
-        position: 'left'
-    });
+    let sideBarMgr = createSideBar()
     
-    map.addControl(sidebar);
+    map.addControl(sideBarMgr.getSidebar());
 
     window.ourLeafletJSMap.map = map;
-    window.ourLeafletJSMap.sidebar = sidebar;
+    window.ourLeafletJSMap.sideBarMgr = sideBarMgr;
 }
 
 function addPlanesToMap() {
     getPlaneData()
     .then((myData) => {
         let map = window.ourLeafletJSMap.map;
-        let sidebar = window.ourLeafletJSMap.sidebar;
+        let sideBarMgr = window.ourLeafletJSMap.sideBarMgr;
 
         // PlaneIcon
         let planeIcon = L.icon({
@@ -52,15 +50,78 @@ function addPlanesToMap() {
     
         }).bindPopup(function (layer) {
             let popupHTML = featurePropertiesToPopUpContent(layer.feature.properties);
-            sidebar.setContent(sidebarHTML(popupHTML))
+
+            sideBarMgr.updateSidebar(layer.feature.properties);
+            let sidebar = sideBarMgr.getSidebar();
             sidebar.show()
-            return popupHTML
+
+            return popupHTML;
         }).addTo(map);
     
         function iris (feature, layer){
             layer.setIcon(planeIcon);
         };
     })
+}
+
+function createSideBar(){
+
+    let currentPlane = '';
+    let currentPlanesWaypoints = [];
+    var sidebar = L.control.sidebar('sidebar', {
+        position: 'left'
+    });
+
+    const sideBarManager = {
+        getSidebar: () => {
+            return sidebar;
+        },
+        updateSidebar: (planeProps) => {
+            currentPlane = planeProps;
+            let popupHTML = featurePropertiesToPopUpContent(currentPlane)
+            let sideBarHTML = sidebarHTML(popupHTML)
+            sidebar.setContent(sideBarHTML)
+
+            //AJAX the track
+            let tableRows = ''
+            getTrackData(currentPlane.id)
+            .then((data) => {
+                currentPlanesWaypoints = data.coorddinates;
+
+                currentPlanesWaypoints.forEach((waypoint) => {
+                    tableRows += '<tr><td>' + waypoint.lat + '</td><td>' + waypoint.lon + '</td></tr>'
+                })
+
+                let tracksTable = `
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Lat</th>
+                            <th>Long</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${tableRows}
+                    </tbody>
+                </table>
+                `
+                sideBarHTML += tracksTable
+                //sidebar.setContent(sideBarHTML)
+            })
+        },
+        showPlaneTrack: () => {
+            if(currentPlanesWaypoints.length > 0){
+                let latLongs = [];
+                currentPlanesWaypoints.forEach((point) => {
+                    latLongs.push([point.lat, point.lon])
+                })
+        
+                addPolyLineToMap(latLongs)
+            }
+        }
+    }
+
+    return sideBarManager;
 }
 
 function featurePropertiesToPopUpContent(data) {
@@ -70,32 +131,19 @@ function featurePropertiesToPopUpContent(data) {
         dialogHTML += '<span>' + property + ': ' + data[property] + '</span><br>'
     })
 
-    dialogHTML += '<button onclick="showPlaneTrack(\'' + data.callsign + '\')">Show track for ' + data.callsign + '</button>'
+    let uniqueKey = 'id'
+    if(getDataSource()) { 
+        uniqueKey = 'icao24'
+    }
+
+    dialogHTML += '<div id="trackBtnCont"><button onclick="window.ourLeafletJSMap.sideBarMgr.showPlaneTrack(\'' + data[uniqueKey] + '\')">Show track for ' + data[uniqueKey] + '</button></div>'
     return dialogHTML;
 }
 
 function sidebarHTML(content){
     return `
-    <div id="sidebarClose">
-        <h1>Airplane Data</h1>
-        <button id="sidebarCloseBtn" onclick="window.ourLeafletJSMap.sidebar.hide();">X</button>
-    </div>
+    <h1>Airplane Data</h1>
     ${content}`
-}
-
-function showPlaneTrack(icao24)
-{
-    console.log(icao24)
-    getTrackData(icao24)
-    .then((data) => {
-        //Convert to lat-long array
-        let latLongs = [];
-        data.coordinates.forEach((point) => {
-            latLongs.push([point.coorddinates.coordinates[0], point.coorddinates.coordinates[1]])
-        })
-
-        addPolyLineToMap(latLongs)
-    })
 }
 
 function addPolyLineToMap(latlngs) {
@@ -110,9 +158,23 @@ function addPolyLineToMap(latlngs) {
 }
 
 function getPlaneData() {
-    return fetch('/data').then((resp) => resp.json()) // Transform the data into json
+    let URL = '/data'
+    if(getDataSource()) { 
+        URL = '/api/states/all'
+    }
+
+    return fetch(URL).then((resp) => resp.json()) // Transform the data into json
 }
 
-function getTrackData(callsign) {
-    return fetch('/track?callsign=' + callsign).then((resp) => resp.json())
+function getTrackData(id) {
+    let URL = '/track?id='
+    if(getDataSource()) { 
+        URL = '/api/tracks?icao24='
+    }
+
+    return fetch(URL + id).then((resp) => resp.json())
+}
+
+function getDataSource() {
+    return window.location.search.indexOf('open') > -1
 }

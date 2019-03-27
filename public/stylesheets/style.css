@@ -16,15 +16,22 @@ a {
   height: 100%;
 }
 
-#sidebarClose {
-  display: flex;
+#sidebar {
+  box-shadow: 10px 10px 5px 0px rgba(0,0,0,0.75);
+  height: initial;
+  background-color: #efefef;
 }
 
-#sidebarClose h1 {
-  flex-grow: 1;
+#sidebar h1 {
+  text-align: center;
 }
 
-#sidebarCloseBtn {
-  width: 25px;
-  height: 25px;
+.leaflet-sidebar .close {
+  z-index: 801;
+  background-color: #efefef;
+}
+
+#trackBtnCont {
+  text-align: center;
+  margin: 20px
 }

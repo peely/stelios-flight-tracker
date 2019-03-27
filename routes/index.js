@@ -19,7 +19,7 @@ var geom_query =
             array_to_json(array_agg(f)) As features
             FROM (
                 SELECT 'Feature' As type, ST_AsGeoJSON(lg.geom)::json As geometry,
-                json_build_object('id', id, 'heading', heading, 'callsign', callsign) As properties
+                json_build_object('id', id, 't', t, 'lon', lon, 'lat', lat, 'alt', alt, 'annotation', annotation, 'speed', speed, 'heading', heading, 'on_groud', on_groud, 'hexid', hexid, 'callsign', callsign, 'adep', adep, 'ades', ades) As properties
                 FROM airplane_data As lg
             ) As f
         ) As fc`;
@@ -45,17 +45,17 @@ router.get('/data', function (req, res) {
 router.get('/track', function (req, res) {
 
     let track_query = 
-`SELECT row_to_json(fc)
-    FROM (
-        SELECT 'MultiPoint' As type,
-        array_to_json(array_agg(f)) As coordinates
+    `SELECT row_to_json(fc)
         FROM (
-            SELECT ST_AsGeoJSON(lg.geom)::json As coorddinates
-            FROM airplane_data_history As lg
-            WHERE callsign = ${req.query.callsign}
-        ) As f
-    ) As fc` 
-
+            SELECT 'MultiPoint' As type,
+            array_agg(f) As coorddinates
+            FROM (
+                SELECT lat, lon
+                FROM airplane_data_history As lg
+                WHERE id = '${req.query.id}'
+            ) As f
+        ) As fc` 
+    
     getPGData(track_query)
     .then((data) => {
         res.send(data);
