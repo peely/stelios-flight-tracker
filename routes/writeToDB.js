@@ -34,10 +34,6 @@ router.get('/insertIntoDB', async function(req, res, next) {
     const text = `INSERT INTO public.airplane_data(
         id, t, lon, lat, alt, annotation, speed, heading, on_groud, hexid, callsign, adep, ades)
         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13);`
-    
-    // dbRows.forEach((item) => {
-    //     await query(text, values)
-    // })
 
     let startIndex = req.query.start || 0;
     let endIndex = req.query.end || dbRows.length;
@@ -46,7 +42,19 @@ router.get('/insertIntoDB', async function(req, res, next) {
         const element = dbRows[index];
         let result = await client.query(text, element)
     }
-   res.json('yay')
+   res.json('done')
+});
+
+router.get('/cleanDB', async function(req, res, next) {
+    var client = new Client(conString); // Setup our Postgres Client
+    client.connect(); // connect to the client
+
+    const text = `DELETE FROM public.airplane_data;
+    DELETE FROM public.airplane_data_history;`
+    
+    let result = await client.query(text)
+    
+   res.json(result)
 });
 
 
