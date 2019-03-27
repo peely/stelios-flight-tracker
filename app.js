@@ -6,6 +6,7 @@ var logger = require('morgan');
 
 var indexRouter = require('./routes/index');
 var apiRouter = require('./routes/api');
+var writeToDBRouter = require('./routes/writeToDB');
 var usersRouter = require('./routes/users');
 
 var app = express();
@@ -16,6 +17,7 @@ app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
 
+app.use('/api/writeToDB', writeToDBRouter);
 app.use('/api', apiRouter);
 app.use('/', indexRouter);
 app.use('/users', usersRouter);
@@ -33,7 +35,7 @@ app.use(function(err, req, res, next) {
 
   // render the error page
   res.status(err.status || 500);
-  res.render('error');
+  res.json(err);
 });
 
 module.exports = app;
