@@ -1,11 +1,12 @@
 window.ourLeafletJSMap = {
     map: {},
-    track : {},
-    sideBarMgr: {}
+    track: {},
+    sideBarMgr: {},
+    geoJSONLayer: { remove: () => { } }
 }
 function drawTheMap() {
     // Create variable to hold map element, give initial settings to map
-    let map = L.map('map', {center: [43.64701, -79.39425], zoom: 3});
+    let map = L.map('map', { center: [43.64701, -79.39425], zoom: 3 });
 
     // Add OpenStreetMap tile layer to map element
     L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', {
@@ -22,49 +23,62 @@ function drawTheMap() {
 
     // Sidebar
     let sideBarMgr = createSideBar()
-    
+
     map.addControl(sideBarMgr.getSidebar());
+
+    map.fitBounds([
+        [49.65, 6.15],
+        [26.90, -19.48]
+    ]);
 
     window.ourLeafletJSMap.map = map;
     window.ourLeafletJSMap.sideBarMgr = sideBarMgr;
+
+    addPlanesToMap()
+    setInterval(addPlanesToMap, 3000)
 }
 
 function addPlanesToMap() {
     getPlaneData()
-    .then((myData) => {
-        let map = window.ourLeafletJSMap.map;
-        let sideBarMgr = window.ourLeafletJSMap.sideBarMgr;
+        .then((myData) => {
+            let map = window.ourLeafletJSMap.map;
+            let sideBarMgr = window.ourLeafletJSMap.sideBarMgr;
+            let geoJSONLayer = window.ourLeafletJSMap.geoJSONLayer;
 
-        // PlaneIcon
-        let planeIcon = L.icon({
-            iconUrl :'images/if_plane_173072.png',
-            iconSize: [15, 15]
-        });
-    
-         // Add JSON to map
-         L.geoJson(myData, {
-            onEachFeature: iris,
-            pointToLayer: function (feature, latlng) {
-                return L.marker(latlng, {icon: planeIcon, rotationAngle: feature.properties.f3})
+            // PlaneIcon
+            let planeIcon = L.icon({
+                iconUrl: 'images/if_plane_173072.png',
+                iconSize: [15, 15]
+            });
+
+            // Add JSON to map
+            geoJSONLayer.remove()
+            try {
+                geoJSONLayer = L.geoJson(myData, {
+                    onEachFeature: iris,
+                    pointToLayer: function (feature, latlng) {
+                        return L.marker(latlng, { icon: planeIcon, rotationAngle: feature.properties.f3 })
+                    }
+                }).bindPopup(function (layer) {
+                    let popupHTML = featurePropertiesToPopUpContent(layer.feature.properties);
+
+                    sideBarMgr.updateSidebar(layer.feature.properties);
+                    let sidebar = sideBarMgr.getSidebar();
+                    sidebar.show()
+
+                    return popupHTML;
+                }).addTo(map);
+            } catch (e) {
+                console.log(e)
             }
-    
-        }).bindPopup(function (layer) {
-            let popupHTML = featurePropertiesToPopUpContent(layer.feature.properties);
 
-            sideBarMgr.updateSidebar(layer.feature.properties);
-            let sidebar = sideBarMgr.getSidebar();
-            sidebar.show()
-
-            return popupHTML;
-        }).addTo(map);
-    
-        function iris (feature, layer){
-            layer.setIcon(planeIcon);
-        };
-    })
+            function iris(feature, layer) {
+                layer.setIcon(planeIcon);
+            };
+        })
 }
 
-function createSideBar(){
+function createSideBar() {
 
     let currentPlane = '';
     let currentPlanesWaypoints = [];
@@ -85,14 +99,14 @@ function createSideBar(){
             //AJAX the track
             let tableRows = ''
             getTrackData(currentPlane.id)
-            .then((data) => {
-                currentPlanesWaypoints = data.coorddinates;
+                .then((data) => {
+                    currentPlanesWaypoints = data.coorddinates;
 
-                currentPlanesWaypoints.forEach((waypoint) => {
-                    tableRows += '<tr><td>' + waypoint.lat + '</td><td>' + waypoint.lon + '</td></tr>'
-                })
+                    currentPlanesWaypoints.forEach((waypoint) => {
+                        tableRows += '<tr><td>' + waypoint.lat + '</td><td>' + waypoint.lon + '</td></tr>'
+                    })
 
-                let tracksTable = `
+                    let tracksTable = `
                 <table>
                     <thead>
                         <tr>
@@ -105,17 +119,17 @@ function createSideBar(){
                     </tbody>
                 </table>
                 `
-                sideBarHTML += tracksTable
-                //sidebar.setContent(sideBarHTML)
-            })
+                    sideBarHTML += tracksTable
+                    //sidebar.setContent(sideBarHTML)
+                })
         },
         showPlaneTrack: () => {
-            if(currentPlanesWaypoints.length > 0){
+            if (currentPlanesWaypoints.length > 0) {
                 let latLongs = [];
                 currentPlanesWaypoints.forEach((point) => {
                     latLongs.push([point.lat, point.lon])
                 })
-        
+
                 addPolyLineToMap(latLongs)
             }
         }
@@ -132,7 +146,7 @@ function featurePropertiesToPopUpContent(data) {
     })
 
     let uniqueKey = 'id'
-    if(getDataSource()) { 
+    if (getDataSource()) {
         uniqueKey = 'icao24'
     }
 
@@ -140,7 +154,7 @@ function featurePropertiesToPopUpContent(data) {
     return dialogHTML;
 }
 
-function sidebarHTML(content){
+function sidebarHTML(content) {
     return `
     <h1>Airplane Data</h1>
     ${content}`
@@ -151,7 +165,7 @@ function addPolyLineToMap(latlngs) {
     let previousPolyLine = window.ourLeafletJSMap.track;
     previousPolyLine.remove && previousPolyLine.remove()
 
-    var polyline = L.polyline(latlngs, {color: 'red'}).addTo(map);
+    var polyline = L.polyline(latlngs, { color: 'red' }).addTo(map);
     map.fitBounds(polyline.getBounds());
 
     window.ourLeafletJSMap.track = polyline;
@@ -159,7 +173,7 @@ function addPolyLineToMap(latlngs) {
 
 function getPlaneData() {
     let URL = '/data'
-    if(getDataSource()) { 
+    if (getDataSource()) {
         URL = '/api/states/all'
     }
 
@@ -168,7 +182,7 @@ function getPlaneData() {
 
 function getTrackData(id) {
     let URL = '/track?id='
-    if(getDataSource()) { 
+    if (getDataSource()) {
         URL = '/api/tracks?icao24='
     }
 
